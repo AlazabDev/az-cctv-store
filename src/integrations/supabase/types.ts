@@ -29,6 +29,7 @@ export type Database = {
           name: string
           old_price: number | null
           price: number
+          r2_images: Json
           section: string
           sku: string | null
           source_row: number
@@ -51,6 +52,7 @@ export type Database = {
           name: string
           old_price?: number | null
           price?: number
+          r2_images?: Json
           section: string
           sku?: string | null
           source_row?: number
@@ -73,6 +75,7 @@ export type Database = {
           name?: string
           old_price?: number | null
           price?: number
+          r2_images?: Json
           section?: string
           sku?: string | null
           source_row?: number

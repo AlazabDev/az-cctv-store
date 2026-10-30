@@ -8,6 +8,13 @@
       "when": 1793338480266,
       "tag": "0000_create_products_table",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793338519046,
+      "tag": "0001_add_r2_images_column",
+      "breakpoints": true
     }
   ]
 }
