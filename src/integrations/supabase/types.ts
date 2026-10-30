@@ -14,21 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      import_image_map: {
-        Row: {
-          new_images: Json
-          source_sheet: string
-        }
-        Insert: {
-          new_images: Json
-          source_sheet: string
-        }
-        Update: {
-          new_images?: Json
-          source_sheet?: string
-        }
-        Relationships: []
-      }
       products: {
         Row: {
           available: boolean
@@ -103,7 +88,20 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      brand_counts: {
+        Row: {
+          brand: string | null
+          count: number | null
+        }
+        Relationships: []
+      }
+      category_counts: {
+        Row: {
+          category: string | null
+          count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
