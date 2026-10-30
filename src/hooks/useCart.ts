@@ -1,9 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Product } from "@/data/products";
+import type { Product } from "@/lib/catalog";
 
 export interface CartItem {
-  product: Product;
+  productId: string;
+  name: string;
+  brand: string;
+  price: number;
+  image: string | null;
   quantity: number;
 }
 
@@ -17,6 +21,15 @@ interface CartState {
   getItemCount: () => number;
 }
 
+const toCartItem = (product: Product, quantity: number): CartItem => ({
+  productId: product.id,
+  name: product.name,
+  brand: product.brand,
+  price: product.price,
+  image: product.image_url,
+  quantity,
+});
+
 export const useCart = create<CartState>()(
   persist(
     (set, get) => ({
@@ -24,23 +37,17 @@ export const useCart = create<CartState>()(
 
       addItem: (product: Product, quantity = 1) => {
         set((state) => {
-          const existingItem = state.items.find(
-            (item) => item.product.id === product.id
-          );
-
-          if (existingItem) {
+          const existing = state.items.find((item) => item.productId === product.id);
+          if (existing) {
             return {
               items: state.items.map((item) =>
-                item.product.id === product.id
-                  ? { ...item, quantity: Math.min(item.quantity + quantity, 10) }
+                item.productId === product.id
+                  ? { ...item, quantity: Math.min(item.quantity + quantity, 99) }
                   : item
               ),
             };
           }
-
-          return {
-            items: [...state.items, { product, quantity }],
-          };
+          return { items: [...state.items, toCartItem(product, Math.max(1, quantity))] };
         });
       },
 
@@ -49,11 +56,10 @@ export const useCart = create<CartState>()(
           get().removeItem(productId);
           return;
         }
-
         set((state) => ({
           items: state.items.map((item) =>
-            item.product.id === productId
-              ? { ...item, quantity: Math.min(quantity, 10) }
+            item.productId === productId
+              ? { ...item, quantity: Math.min(quantity, 99) }
               : item
           ),
         }));
@@ -61,27 +67,17 @@ export const useCart = create<CartState>()(
 
       removeItem: (productId: string) => {
         set((state) => ({
-          items: state.items.filter((item) => item.product.id !== productId),
+          items: state.items.filter((item) => item.productId !== productId),
         }));
       },
 
-      clearCart: () => {
-        set({ items: [] });
-      },
+      clearCart: () => set({ items: [] }),
 
-      getSubtotal: () => {
-        return get().items.reduce(
-          (total, item) => total + item.product.price * item.quantity,
-          0
-        );
-      },
+      getSubtotal: () =>
+        get().items.reduce((total, item) => total + item.price * item.quantity, 0),
 
-      getItemCount: () => {
-        return get().items.reduce((count, item) => count + item.quantity, 0);
-      },
+      getItemCount: () => get().items.reduce((count, item) => count + item.quantity, 0),
     }),
-    {
-      name: "maison-cart",
-    }
+    { name: "az-cart" }
   )
 );
