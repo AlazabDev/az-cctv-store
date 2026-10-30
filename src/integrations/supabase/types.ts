@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      import_image_map: {
+        Row: {
+          new_images: Json
+          source_sheet: string
+        }
+        Insert: {
+          new_images: Json
+          source_sheet: string
+        }
+        Update: {
+          new_images?: Json
+          source_sheet?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           available: boolean

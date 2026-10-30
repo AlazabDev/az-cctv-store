@@ -15,6 +15,13 @@
       "when": 1793338519046,
       "tag": "0001_add_r2_images_column",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793338542797,
+      "tag": "0002_create_import_image_map",
+      "breakpoints": true
     }
   ]
 }
