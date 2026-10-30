@@ -51,14 +51,23 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        terracotta: {
-          DEFAULT: "hsl(var(--terracotta))",
-          light: "hsl(var(--terracotta-light))",
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          foreground: "hsl(var(--gold-foreground))",
         },
-        cream: "hsl(var(--warm-cream))",
-        taupe: "hsl(var(--warm-taupe))",
-        charcoal: "hsl(var(--charcoal))",
-        linen: "hsl(var(--linen))",
+        navy: {
+          DEFAULT: "hsl(var(--navy))",
+          light: "hsl(var(--navy-light))",
+        },
+        brand: {
+          green: "hsl(var(--brand-green))",
+        },
+        legacy: {
+          cream: "hsl(var(--warm-cream))",
+          charcoal: "hsl(var(--charcoal))",
+          linen: "hsl(var(--linen))",
+          taupe: "hsl(var(--warm-taupe))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -104,11 +113,11 @@ export default {
           "0%": { transform: "scale(1)" },
           "100%": { transform: "scale(1.08)" },
         },
-        "marquee": {
+        marquee: {
           "0%": { transform: "translateX(0)" },
           "100%": { transform: "translateX(-50%)" },
         },
-        "float": {
+        float: {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-6px)" },
         },
@@ -121,8 +130,8 @@ export default {
         "slide-in-right": "slide-in-right 0.3s ease-out",
         "slide-out-right": "slide-out-right 0.3s ease-out",
         "ken-burns": "ken-burns 20s ease-out forwards",
-        "marquee": "marquee 40s linear infinite",
-        "float": "float 6s ease-in-out infinite",
+        marquee: "marquee 40s linear infinite",
+        float: "float 6s ease-in-out infinite",
       },
     },
   },
