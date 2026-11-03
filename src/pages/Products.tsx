@@ -1,161 +1,190 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { Shield, ArrowRight, Truck, Award, Headphones, Percent } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { ProductCard } from "@/components/ProductCard";
-import { queryProducts, getCategories, type Product } from "@/lib/catalog";
+import {
+  queryProducts,
+  getCategories,
+  getBrands,
+  sectionFromSlug,
+  type Product,
+  type SortKey,
+} from "@/lib/catalog";
 import { useLanguage } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 
-const Index = () => {
+const Products = () => {
+  const [params, setParams] = useSearchParams();
   const { t, catLabel } = useLanguage();
-  const [featured, setFeatured] = useState<Product[]>([]);
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
   const [categories, setCategories] = useState<{ category: string; count: number }[]>([]);
+  const [brands, setBrands] = useState<{ brand: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const activeCategory = params.get("category") || "";
+  const activeSectionSlug = params.get("section") || "";
+  const activeSort = (params.get("sort") as SortKey) || "featured";
+  const activeSearch = params.get("search") || "";
+  const activePage = parseInt(params.get("page") || "1", 10);
+
   useEffect(() => {
-    async function load() {
+    Promise.all([getCategories(), getBrands()]).then(([cats, brs]) => {
+      setCategories(cats);
+      setBrands(brs);
+    });
+  }, []);
+
+  useEffect(() => {
+    async function fetchList() {
+      setLoading(true);
       try {
-        const [pRes, cRes] = await Promise.all([
-          queryProducts({ page: 1, sort: "featured" }),
-          getCategories(),
-        ]);
-        setFeatured(pRes.items.slice(0, 8));
-        setCategories(cRes.slice(0, 12));
-      } catch (err) {
-        console.error("Failed to load catalog data", err);
+        const res = await queryProducts({
+          category: activeCategory || undefined,
+          section: sectionFromSlug(activeSectionSlug),
+          search: activeSearch || undefined,
+          sort: activeSort,
+          page: activePage,
+        });
+        setProducts(res.items);
+        setTotal(res.total);
+        setPageCount(res.pageCount);
+      } catch (e) {
+        console.error("Error fetching products", e);
       } finally {
         setLoading(false);
       }
     }
-    load();
-  }, []);
+    fetchList();
+  }, [activeCategory, activeSectionSlug, activeSort, activeSearch, activePage]);
+
+  const updateParam = (key: string, val: string) => {
+    const next = new URLSearchParams(params);
+    if (!val) next.delete(key);
+    else next.set(key, val);
+    next.set("page", "1");
+    setParams(next);
+  };
 
   return (
     <Layout>
-      <section className="relative bg-gradient-to-br from-primary via-primary/95 to-secondary text-primary-foreground py-16 md:py-24 overflow-hidden">
-        <div className="container-full relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-          <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent text-accent-foreground text-xs font-bold uppercase tracking-wider">
-              <Shield className="w-3.5 h-3.5" />
-              {t("brandTagline")}
-            </div>
-            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
-              {t("heroTitle")}
-            </h1>
-            <p className="text-base md:text-lg text-primary-foreground/80 max-w-xl">
-              {t("heroSubtitle")}
-            </p>
-            <div className="flex flex-wrap gap-3 pt-2">
-              <Button asChild size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold">
-                <Link to="/products">{t("heroCta")}</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="border-primary-foreground/30 text-white hover:bg-primary-foreground/10">
-                <Link to="/products?section=cctv">{t("sectionCctv")}</Link>
-              </Button>
-            </div>
-          </div>
-
-          <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-primary-foreground/10 aspect-[4/3] bg-primary/40 flex items-center justify-center">
-            <img
-              src="/src/assets/hero-cctv.jpg"
-              alt="CCTV & Networking Systems"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=1200&q=80";
-              }}
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="border-y border-border bg-muted/40 py-6">
-        <div className="container-full grid grid-cols-2 md:grid-cols-4 gap-4 text-center md:text-start">
-          <div className="flex items-center gap-3 justify-center md:justify-start">
-            <Award className="w-8 h-8 text-accent shrink-0" />
-            <div>
-              <p className="font-bold text-sm">{t("whyGenuine")}</p>
-              <p className="text-xs text-muted-foreground">{t("whyGenuineText")}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 justify-center md:justify-start">
-            <Truck className="w-8 h-8 text-accent shrink-0" />
-            <div>
-              <p className="font-bold text-sm">{t("whyDelivery")}</p>
-              <p className="text-xs text-muted-foreground">{t("whyDeliveryText")}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 justify-center md:justify-start">
-            <Headphones className="w-8 h-8 text-accent shrink-0" />
-            <div>
-              <p className="font-bold text-sm">{t("whySupport")}</p>
-              <p className="text-xs text-muted-foreground">{t("whySupportText")}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 justify-center md:justify-start">
-            <Percent className="w-8 h-8 text-accent shrink-0" />
-            <div>
-              <p className="font-bold text-sm">{t("whyPrice")}</p>
-              <p className="text-xs text-muted-foreground">{t("whyPriceText")}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-14 container-full">
-        <div className="flex items-end justify-between mb-8">
+      <div className="container-full py-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">{t("categoriesTitle")}</h2>
-            <p className="text-sm text-muted-foreground mt-1">{t("categoriesSubtitle")}</p>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              {activeSectionSlug === "cctv"
+                ? t("sectionCctv")
+                : activeSectionSlug === "network"
+                ? t("sectionNetwork")
+                : activeCategory
+                ? catLabel(activeCategory)
+                : t("navProducts")}
+            </h1>
+            <p className="text-xs text-muted-foreground mt-1">
+              {total} {t("results")}
+            </p>
           </div>
-          <Link to="/products" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
-            {t("viewAll")} <ArrowRight className="w-4 h-4 rtl:rotate-180" />
-          </Link>
-        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {categories.map((c) => (
-            <Link
-              key={c.category}
-              to={`/products?category=${encodeURIComponent(c.category)}`}
-              className="p-4 rounded-lg border border-border bg-card hover:border-primary hover:shadow-sm transition-all text-center flex flex-col justify-center min-h-[90px]"
+          <div className="flex items-center gap-3">
+            <select
+              value={activeSort}
+              onChange={(e) => updateParam("sort", e.target.value)}
+              className="h-9 px-3 text-xs bg-card border border-border rounded-md focus:outline-none"
             >
-              <span className="font-medium text-xs text-foreground line-clamp-2">{catLabel(c.category)}</span>
-              <span className="text-[11px] text-muted-foreground mt-1 font-mono">{c.count} {t("results")}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="py-14 bg-muted/20 border-t border-border">
-        <div className="container-full">
-          <div className="flex items-end justify-between mb-8">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight text-foreground">{t("featuredTitle")}</h2>
-              <p className="text-sm text-muted-foreground mt-1">870+ منتج جاهز للشحن الفوري</p>
-            </div>
-            <Link to="/products" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
-              {t("viewAll")} <ArrowRight className="w-4 h-4 rtl:rotate-180" />
-            </Link>
+              <option value="featured">{t("sortFeatured")}</option>
+              <option value="price-asc">{t("sortPriceAsc")}</option>
+              <option value="price-desc">{t("sortPriceDesc")}</option>
+              <option value="name">{t("sortName")}</option>
+            </select>
           </div>
-
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="aspect-[3/4] bg-muted animate-pulse rounded-lg" />
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {featured.map((p, i) => (
-                <ProductCard key={p.id} product={p} index={i} />
-              ))}
-            </div>
-          )}
         </div>
-      </section>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 pt-6">
+          <aside className="space-y-6">
+            <div>
+              <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <Filter className="w-4 h-4 text-primary" />
+                {t("allCategories")}
+              </h3>
+              <div className="space-y-1 max-h-60 overflow-y-auto pe-1 text-xs">
+                <button
+                  onClick={() => updateParam("category", "")}
+                  className={`w-full text-start py-1 px-2 rounded ${
+                    !activeCategory ? "bg-primary text-primary-foreground font-bold" : "hover:bg-muted"
+                  }`}
+                >
+                  {t("allCategories")}
+                </button>
+                {categories.map((c) => (
+                  <button
+                    key={c.category}
+                    onClick={() => updateParam("category", c.category)}
+                    className={`w-full text-start py-1 px-2 rounded flex justify-between ${
+                      activeCategory === c.category
+                        ? "bg-primary text-primary-foreground font-bold"
+                        : "hover:bg-muted"
+                    }`}
+                  >
+                    <span className="truncate">{catLabel(c.category)}</span>
+                    <span className="text-[10px] opacity-70">({c.count})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
+
+          <div className="lg:col-span-3">
+            {loading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <div key={i} className="aspect-[3/4] bg-muted animate-pulse rounded-lg" />
+                ))}
+              </div>
+            ) : products.length === 0 ? (
+              <div className="text-center py-20 border rounded-lg bg-muted/20">
+                <p className="text-muted-foreground">{t("productNotFoundText")}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {products.map((p, i) => (
+                  <ProductCard key={p.id} product={p} index={i} />
+                ))}
+              </div>
+            )}
+
+            {pageCount > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-8">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={activePage <= 1}
+                  onClick={() => updateParam("page", String(activePage - 1))}
+                >
+                  <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
+                  {t("prevPage")}
+                </Button>
+                <span className="text-xs text-muted-foreground px-2">
+                  {t("page")} {activePage} / {pageCount}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={activePage >= pageCount}
+                  onClick={() => updateParam("page", String(activePage + 1))}
+                >
+                  {t("nextPage")}
+                  <ChevronRight className="w-4 h-4 rtl:rotate-180" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </Layout>
   );
 };
 
-export default Index;
+export default Products;

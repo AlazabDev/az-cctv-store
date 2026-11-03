@@ -1,190 +1,215 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Filter, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { useParams, Link } from "react-router-dom";
+import { Shield, Truck, Heart, Check } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { ProductCard } from "@/components/ProductCard";
+import { QuantitySelector } from "@/components/QuantitySelector";
 import {
-  queryProducts,
-  getCategories,
-  getBrands,
-  sectionFromSlug,
+  getProductById,
+  getRelatedProducts,
+  parseSpecs,
   type Product,
-  type SortKey,
 } from "@/lib/catalog";
+import { useWishlist } from "@/hooks/useWishlist";
+import { useCart } from "@/hooks/useCart";
 import { useLanguage } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
-const Products = () => {
-  const [params, setParams] = useSearchParams();
-  const { t, catLabel } = useLanguage();
+const ProductDetail = () => {
+  const { slug: id } = useParams<{ slug: string }>();
+  const { fmtPrice, catLabel, t } = useLanguage();
+  const { toast } = useToast();
+  const { addItem: addWish, removeItem: removeWish, isInWishlist } = useWishlist();
+  const { addItem: addCart } = useCart();
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [total, setTotal] = useState(0);
-  const [pageCount, setPageCount] = useState(1);
-  const [categories, setCategories] = useState<{ category: string; count: number }[]>([]);
-  const [brands, setBrands] = useState<{ brand: string; count: number }[]>([]);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [related, setRelated] = useState<Product[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string>("");
+  const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
 
-  const activeCategory = params.get("category") || "";
-  const activeSectionSlug = params.get("section") || "";
-  const activeSort = (params.get("sort") as SortKey) || "featured";
-  const activeSearch = params.get("search") || "";
-  const activePage = parseInt(params.get("page") || "1", 10);
-
   useEffect(() => {
-    Promise.all([getCategories(), getBrands()]).then(([cats, brs]) => {
-      setCategories(cats);
-      setBrands(brs);
-    });
-  }, []);
-
-  useEffect(() => {
-    async function fetchList() {
-      setLoading(true);
-      try {
-        const res = await queryProducts({
-          category: activeCategory || undefined,
-          section: sectionFromSlug(activeSectionSlug),
-          search: activeSearch || undefined,
-          sort: activeSort,
-          page: activePage,
-        });
-        setProducts(res.items);
-        setTotal(res.total);
-        setPageCount(res.pageCount);
-      } catch (e) {
-        console.error("Error fetching products", e);
-      } finally {
-        setLoading(false);
+    if (!id) return;
+    setLoading(true);
+    getProductById(id).then(async (p) => {
+      if (p) {
+        setProduct(p);
+        setSelectedImage(p.image_url || p.images?.[0] || "/placeholder.svg");
+        const rel = await getRelatedProducts(p, 4);
+        setRelated(rel);
       }
-    }
-    fetchList();
-  }, [activeCategory, activeSectionSlug, activeSort, activeSearch, activePage]);
+      setLoading(false);
+    });
+  }, [id]);
 
-  const updateParam = (key: string, val: string) => {
-    const next = new URLSearchParams(params);
-    if (!val) next.delete(key);
-    else next.set(key, val);
-    next.set("page", "1");
-    setParams(next);
-  };
+  if (loading) {
+    return (
+      <Layout>
+        <div className="container-full py-20 text-center animate-pulse">
+          <div className="h-8 bg-muted max-w-sm mx-auto rounded mb-4" />
+          <div className="h-64 bg-muted max-w-lg mx-auto rounded" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!product) {
+    return (
+      <Layout>
+        <div className="container-full py-28 text-center">
+          <h1 className="text-3xl font-bold mb-4">{t("productNotFound")}</h1>
+          <p className="text-muted-foreground mb-8">{t("productNotFoundText")}</p>
+          <Button asChild>
+            <Link to="/products">{t("browseProducts")}</Link>
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  const inWishlist = isInWishlist(product.id);
+  const specs = parseSpecs(product.description);
+  const allImages = Array.from(new Set([product.image_url, ...(product.images || [])].filter(Boolean))) as string[];
 
   return (
     <Layout>
-      <div className="container-full py-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-              {activeSectionSlug === "cctv"
-                ? t("sectionCctv")
-                : activeSectionSlug === "network"
-                ? t("sectionNetwork")
-                : activeCategory
-                ? catLabel(activeCategory)
-                : t("navProducts")}
-            </h1>
-            <p className="text-xs text-muted-foreground mt-1">
-              {total} {t("results")}
-            </p>
-          </div>
+      <div className="container-full py-10">
+        <nav className="text-xs text-muted-foreground mb-6 flex items-center gap-1.5">
+          <Link to="/" className="hover:text-foreground">{t("navHome")}</Link>
+          <span>/</span>
+          <Link to="/products" className="hover:text-foreground">{t("navProducts")}</Link>
+          <span>/</span>
+          <Link to={`/products?category=${encodeURIComponent(product.category)}`} className="hover:text-foreground">
+            {catLabel(product.category)}
+          </Link>
+        </nav>
 
-          <div className="flex items-center gap-3">
-            <select
-              value={activeSort}
-              onChange={(e) => updateParam("sort", e.target.value)}
-              className="h-9 px-3 text-xs bg-card border border-border rounded-md focus:outline-none"
-            >
-              <option value="featured">{t("sortFeatured")}</option>
-              <option value="price-asc">{t("sortPriceAsc")}</option>
-              <option value="price-desc">{t("sortPriceDesc")}</option>
-              <option value="name">{t("sortName")}</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 pt-6">
-          <aside className="space-y-6">
-            <div>
-              <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                <Filter className="w-4 h-4 text-primary" />
-                {t("allCategories")}
-              </h3>
-              <div className="space-y-1 max-h-60 overflow-y-auto pe-1 text-xs">
-                <button
-                  onClick={() => updateParam("category", "")}
-                  className={`w-full text-start py-1 px-2 rounded ${
-                    !activeCategory ? "bg-primary text-primary-foreground font-bold" : "hover:bg-muted"
-                  }`}
-                >
-                  {t("allCategories")}
-                </button>
-                {categories.map((c) => (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          <div className="space-y-4">
+            <div className="aspect-square bg-card border rounded-xl p-8 flex items-center justify-center overflow-hidden">
+              <img
+                src={selectedImage}
+                alt={product.name}
+                className="max-h-full max-w-full object-contain"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/placeholder.svg";
+                }}
+              />
+            </div>
+            {allImages.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {allImages.map((img, i) => (
                   <button
-                    key={c.category}
-                    onClick={() => updateParam("category", c.category)}
-                    className={`w-full text-start py-1 px-2 rounded flex justify-between ${
-                      activeCategory === c.category
-                        ? "bg-primary text-primary-foreground font-bold"
-                        : "hover:bg-muted"
+                    key={i}
+                    onClick={() => setSelectedImage(img)}
+                    className={`w-16 h-16 rounded border p-1 bg-card shrink-0 ${
+                      selectedImage === img ? "border-primary ring-2 ring-primary/20" : "border-border"
                     }`}
                   >
-                    <span className="truncate">{catLabel(c.category)}</span>
-                    <span className="text-[10px] opacity-70">({c.count})</span>
+                    <img src={img} alt="" className="w-full h-full object-contain" />
                   </button>
                 ))}
               </div>
-            </div>
-          </aside>
-
-          <div className="lg:col-span-3">
-            {loading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {Array.from({ length: 9 }).map((_, i) => (
-                  <div key={i} className="aspect-[3/4] bg-muted animate-pulse rounded-lg" />
-                ))}
-              </div>
-            ) : products.length === 0 ? (
-              <div className="text-center py-20 border rounded-lg bg-muted/20">
-                <p className="text-muted-foreground">{t("productNotFoundText")}</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {products.map((p, i) => (
-                  <ProductCard key={p.id} product={p} index={i} />
-                ))}
-              </div>
             )}
+          </div>
 
-            {pageCount > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-8">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={activePage <= 1}
-                  onClick={() => updateParam("page", String(activePage - 1))}
-                >
-                  <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
-                  {t("prevPage")}
-                </Button>
-                <span className="text-xs text-muted-foreground px-2">
-                  {t("page")} {activePage} / {pageCount}
+          <div className="space-y-6">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-accent bg-primary px-2.5 py-1 rounded">
+                {product.brand}
+              </span>
+              <h1 className="text-2xl md:text-3xl font-bold mt-3 text-foreground leading-snug">
+                {product.name}
+              </h1>
+              {product.model && (
+                <p className="text-xs font-mono text-muted-foreground mt-1">
+                  {t("modelLabel")}: {product.model}
+                </p>
+              )}
+            </div>
+
+            <div className="p-4 bg-muted/40 rounded-lg border flex items-baseline gap-3">
+              <span className="text-3xl font-extrabold text-primary">
+                {fmtPrice(product.price)}
+              </span>
+              {product.old_price && product.old_price > product.price && (
+                <span className="text-sm text-muted-foreground line-through">
+                  {fmtPrice(product.old_price)}
                 </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={activePage >= pageCount}
-                  onClick={() => updateParam("page", String(activePage + 1))}
-                >
-                  {t("nextPage")}
-                  <ChevronRight className="w-4 h-4 rtl:rotate-180" />
-                </Button>
+              )}
+              {product.available && (
+                <span className="ms-auto text-xs font-semibold text-secondary flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" /> {t("inStock")}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4 pt-2">
+              <QuantitySelector quantity={quantity} onQuantityChange={setQuantity} min={1} max={99} />
+              <Button
+                size="lg"
+                disabled={!product.available}
+                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
+                onClick={() => {
+                  addCart(product, quantity);
+                  toast({ description: t("addedToBag") });
+                }}
+              >
+                {t("addToBag")}
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => {
+                  if (inWishlist) removeWish(product.id);
+                  else addWish(product);
+                }}
+              >
+                <Heart className={`w-5 h-5 ${inWishlist ? "fill-destructive text-destructive" : ""}`} />
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-4 border-t text-xs">
+              <div className="flex items-center gap-2 p-3 bg-muted/30 rounded">
+                <Shield className="w-4 h-4 text-accent" />
+                <span>{t("returnsText")}</span>
+              </div>
+              <div className="flex items-center gap-2 p-3 bg-muted/30 rounded">
+                <Truck className="w-4 h-4 text-accent" />
+                <span>{t("shippingText")}</span>
+              </div>
+            </div>
+
+            {specs.length > 0 && (
+              <div className="pt-4 border-t">
+                <h3 className="font-bold text-sm mb-3">{t("specsTitle")}</h3>
+                <div className="divide-y divide-border/60 border rounded-lg overflow-hidden text-xs">
+                  {specs.map((s, i) => (
+                    <div key={i} className="grid grid-cols-3 p-2.5 bg-card">
+                      <span className="font-semibold text-muted-foreground">{s.label}</span>
+                      <span className="col-span-2 text-foreground font-mono">{s.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
         </div>
+
+        {related.length > 0 && (
+          <section className="mt-20 pt-10 border-t">
+            <h2 className="text-xl font-bold mb-6">{t("relatedTitle")}</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {related.map((p, i) => (
+                <ProductCard key={p.id} product={p} index={i} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </Layout>
   );
 };
 
-export default Products;
+export default ProductDetail;
