@@ -1,125 +1,121 @@
-import { Link } from "react-router-dom";
-import { Heart, ShoppingBag } from "lucide-react";
-import { motion } from "framer-motion";
-import type { Product } from "@/lib/catalog";
+import { Link, useNavigate } from "react-router-dom";
+import { Search, Heart, Menu, X, Globe, Shield } from "lucide-react";
+import { useState } from "react";
 import { useWishlist } from "@/hooks/useWishlist";
-import { useCart } from "@/hooks/useCart";
+import { CartIcon } from "@/components/CartIcon";
 import { useLanguage } from "@/lib/i18n";
-import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 
-interface ProductCardProps {
-  product: Product;
-  index?: number;
-}
+export const Header = () => {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { items } = useWishlist();
+  const { lang, setLang, t } = useLanguage();
+  const navigate = useNavigate();
 
-export const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
-  const { addItem: addWish, removeItem: removeWish, isInWishlist } = useWishlist();
-  const { addItem: addCart } = useCart();
-  const { fmtPrice, catLabel, t } = useLanguage();
-  const { toast } = useToast();
-  const inWishlist = isInWishlist(product.id);
-
-  const image = product.image_url || product.images?.[0] || "/placeholder.svg";
-
-  const handleWishlistToggle = (e: React.MouseEvent) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    if (inWishlist) {
-      removeWish(product.id);
-      toast({ description: t("wishlistRemoved") });
-    } else {
-      addWish(product);
-      toast({ description: t("wishlistAdded") });
+    if (searchQuery.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+      setMobileOpen(false);
     }
   };
 
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    addCart(product, 1);
-    toast({ description: t("addedToBag") });
-  };
-
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-30px" }}
-      transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.3) }}
-      className="group bg-card border border-border/60 rounded-lg overflow-hidden flex flex-col hover:border-primary/40 hover:shadow-md transition-all"
-    >
-      <Link to={`/product/${product.id}`} className="relative block aspect-square bg-muted/30 overflow-hidden">
-        <img
-          src={image}
-          alt={product.name}
-          loading="lazy"
-          className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-300"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = "/placeholder.svg";
-          }}
-        />
+    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
+      <div className="bg-primary text-primary-foreground text-xs py-1.5 px-4 text-center font-medium">
+        {t("heroSubtitle")}
+      </div>
 
-        <div className="absolute top-2 start-2 flex flex-col gap-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider bg-primary text-primary-foreground px-2 py-0.5 rounded">
-            {product.brand}
-          </span>
-          {!product.available && (
-            <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded">
-              {t("outOfStock")}
+      <div className="container-full py-3 flex items-center justify-between gap-4">
+        <Link to="/" className="flex items-center gap-2 text-foreground hover:opacity-90">
+          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-black text-lg">
+            <Shield className="w-5 h-5 text-accent" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-bold text-lg leading-tight tracking-tight text-primary">
+              AZ-CCTV
             </span>
-          )}
-        </div>
-
-        <button
-          onClick={handleWishlistToggle}
-          className="absolute top-2 end-2 p-2 rounded-full bg-background/80 backdrop-blur-sm text-foreground hover:bg-background transition-colors"
-          aria-label="Wishlist"
-        >
-          <Heart className={cn("w-4 h-4", inWishlist && "fill-destructive text-destructive")} />
-        </button>
-      </Link>
-
-      <div className="p-3.5 flex flex-col flex-1">
-        <span className="text-xs text-muted-foreground line-clamp-1 mb-1">
-          {catLabel(product.category)}
-        </span>
-
-        <Link
-          to={`/product/${product.id}`}
-          className="font-medium text-sm text-foreground line-clamp-2 hover:text-primary transition-colors flex-1 mb-2"
-        >
-          {product.name}
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+              {t("brandTagline")}
+            </span>
+          </div>
         </Link>
 
-        {product.model && (
-          <span className="text-[11px] text-muted-foreground font-mono mb-2">
-            {product.model}
-          </span>
-        )}
+        <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            className="w-full h-10 ps-10 pe-4 text-sm bg-muted/40 border border-border rounded-lg focus:outline-none focus:border-primary transition-colors"
+          />
+          <Search className="w-4 h-4 text-muted-foreground absolute top-1/2 -translate-y-1/2 start-3" />
+        </form>
 
-        <div className="flex items-center justify-between pt-2 border-t border-border/50 mt-auto">
-          <div>
-            <span className="font-bold text-base text-primary">
-              {fmtPrice(product.price)}
-            </span>
-            {product.old_price && product.old_price > product.price && (
-              <span className="text-xs text-muted-foreground line-through ms-2">
-                {fmtPrice(product.old_price)}
+        <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-foreground/80">
+          <Link to="/" className="hover:text-primary transition-colors">{t("navHome")}</Link>
+          <Link to="/products" className="hover:text-primary transition-colors">{t("navProducts")}</Link>
+          <Link to="/products?section=cctv" className="hover:text-primary transition-colors">{t("navCctv")}</Link>
+          <Link to="/products?section=network" className="hover:text-primary transition-colors">{t("navNetwork")}</Link>
+          <Link to="/about" className="hover:text-primary transition-colors">{t("navAbout")}</Link>
+        </nav>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setLang(lang === "ar" ? "en" : "ar")}
+            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-md border border-border hover:bg-muted transition-colors"
+            title="Toggle Language"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span>{t("language")}</span>
+          </button>
+
+          <Link
+            to="/products"
+            className="relative p-2 text-foreground/80 hover:text-foreground"
+            title={t("wishlist")}
+          >
+            <Heart className="w-5 h-5" />
+            {items.length > 0 && (
+              <span className="absolute top-1 end-1 w-4 h-4 bg-accent text-accent-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                {items.length}
               </span>
             )}
-          </div>
+          </Link>
+
+          <CartIcon />
 
           <button
-            onClick={handleAddToCart}
-            disabled={!product.available}
-            className="p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors"
-            title={t("addToBag")}
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="lg:hidden p-2 text-foreground"
+            aria-label="Toggle Menu"
           >
-            <ShoppingBag className="w-4 h-4" />
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
-    </motion.article>
+
+      {mobileOpen && (
+        <div className="lg:hidden border-t border-border px-4 py-4 bg-background space-y-3">
+          <form onSubmit={handleSearch} className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="w-full h-10 ps-10 pe-4 text-sm bg-muted/40 border border-border rounded-lg"
+            />
+            <Search className="w-4 h-4 text-muted-foreground absolute top-1/2 -translate-y-1/2 start-3" />
+          </form>
+          <div className="flex flex-col gap-2 pt-2 text-sm font-medium">
+            <Link to="/" onClick={() => setMobileOpen(false)} className="py-2 border-b border-border/40">{t("navHome")}</Link>
+            <Link to="/products" onClick={() => setMobileOpen(false)} className="py-2 border-b border-border/40">{t("navProducts")}</Link>
+            <Link to="/products?section=cctv" onClick={() => setMobileOpen(false)} className="py-2 border-b border-border/40">{t("navCctv")}</Link>
+            <Link to="/products?section=network" onClick={() => setMobileOpen(false)} className="py-2 border-b border-border/40">{t("navNetwork")}</Link>
+            <Link to="/about" onClick={() => setMobileOpen(false)} className="py-2">{t("navAbout")}</Link>
+          </div>
+        </div>
+      )}
+    </header>
   );
 };
